@@ -26,6 +26,24 @@ export async function addUserToSession(sessionId: string, userName: string, user
   
 }
 
+export async function removeUserFromSession(sessionId: string, userId: string){
+  try {
+    const supabase = await createClientForServer();
+    const { error } = await supabase
+      .from("user_sessions")
+      .delete()
+      .eq('user_id', userId)
+      .eq('session_id', sessionId);;
+    if (error) {
+      console.error("Users for session not found or error fetching user_session:", error?.message);
+      return [];
+    }
+  } catch (error) {
+    console.error("Error creating session:", error);
+  }
+  
+}
+
 export async function postVote(sessionId: string, userId: string, point: string){
   try {
     const supabase = await createClientForServer();

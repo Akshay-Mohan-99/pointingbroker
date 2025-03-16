@@ -1,7 +1,7 @@
 import { createClient } from "../client";
 
 
-export function subscribeToSession(sessionId: string, sendPayload: (payload: any) => void){
+export function subscribeToSession(sessionId: string, sendPayload: (payload: any, eventType: string) => void){
   try{
     if (!sessionId.trim()) {
       throw Error('Session Id is empty');
@@ -14,7 +14,7 @@ export function subscribeToSession(sessionId: string, sendPayload: (payload: any
       table: 'user_sessions',
       filter: `session_id=eq.${sessionId}`
     }, (payload: any) => {
-      sendPayload(payload.new);
+      sendPayload(payload.new, payload.eventType);
     }).subscribe((status: string) => {
       if(status !== 'subscribe')
         return;

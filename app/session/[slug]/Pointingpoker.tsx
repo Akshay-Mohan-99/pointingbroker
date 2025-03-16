@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Button, Container, Grid, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
 import { getSessionBySessionId, sendSessionAction } from "@/utils/supabase/sessions/actions";
-import { addUserToSession, postVote, resetAllVotes } from "@/utils/supabase/user_sessions/actions";
+import { addUserToSession, postVote, removeUserFromSession, resetAllVotes } from "@/utils/supabase/user_sessions/actions";
 import { useRouter } from "next/navigation";
 import useTempUserSession from "@/utils/helper/useTempUserSession";
 import { subscribeToSession, subscribeToSessionState } from "@/utils/supabase/user_sessions/subscribeToChannel";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { TrashIcon } from "@/icons/trashIcon";
 
 const cards = ["1", "2", "3", "5", "8", "13"];
 
@@ -39,7 +40,7 @@ export default function PointingPoker({
     setCurrentSession();
   }, []);
 
-  const updatePointScore = (payload: any) => {
+  const updatePointScore = (payload: any, eventType: string) => {
     setPointData(prev => ({
       ...prev,
       [payload.user_id]: payload
@@ -49,6 +50,16 @@ export default function PointingPoker({
   const updateSessionState = (payload: string) => {
     if(payload === 'show')
       return setShow(true);
+    else if(payload.includes('remove')) {
+      const removedUser = payload.split('_')[1];
+      if(removedUser === userSessionId)
+        router.push(`/`);
+      return setPointData(prev => {
+        const newData = { ...prev }; // Create a new object
+        delete newData[removedUser]; // Remove the key
+        return newData; // Return the updated object
+      });
+    }
     setShow(false);
     setSelected(null);
   }
@@ -64,6 +75,11 @@ export default function PointingPoker({
     }, {})
     setPointData(allUserMapper);
     setIsLoading(false);
+  }
+
+  const removeUser = (currentUserId: string) => {
+    removeUserFromSession(sessionId, currentUserId);
+    sendSessionAction(sessionId, `remove_${currentUserId}`);
   }
 
   const handleVote = (value: string) => {
@@ -138,48 +154,52 @@ export default function PointingPoker({
 
             <Stack className="text-gray-900 mt-7">
               {Object.keys(pointData).map((userId: string) => (
-                <Paper 
-                  key={userId} 
-                  shadow="xs" 
-                  p="md" 
-                  radius="md"
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between", // Keeps both sections aligned
-                    alignItems: "center",
-                    minWidth: "250px", // Ensures consistency in layout
-                  }}
-                >
-                  {/* Name Section */}
-                  <Text style={{ fontWeight: "bold", whiteSpace: "nowrap" }} size="lg">
-                    {userId === userSessionId ? 'You' : pointData[userId].name}:
-                  </Text>
-                
-                  {/* Point Section */}
-                  <Paper
-                    shadow="xs"
-                    p="sm"
+                <Stack key={userId} style={{ flexDirection: 'row' }}>
+                  <Paper 
+                    shadow="xs" 
+                    p="md" 
                     radius="md"
-                    style={{ 
-                      backgroundColor: show ? "transparent" : pointData[userId].point ? "#a3e635" : "#e63553",
-                      minWidth: "50px",  // Ensures all boxes are uniform in width
-                      textAlign: "center",
-                      transition: "all 0.3s ease-in-out"
+                    style={{
+                      flex: 11,
+                      display: "flex",
+                      justifyContent: "space-between", // Keeps both sections aligned
+                      alignItems: "center",
+                      minWidth: "250px", // Ensures consistency in layout
                     }}
                   >
-                    <Text size="lg" className="font-bold">
-                      {show ? pointData[userId].point : ''}
+                    {/* Name Section */}
+                    <Text style={{ fontWeight: "bold", whiteSpace: "nowrap" }} size="lg">
+                      {userId === userSessionId ? 'You' : pointData[userId].name}:
                     </Text>
+                  
+                    {/* Point Section */}
+                    <Paper
+                      shadow="xs"
+                      p="sm"
+                      radius="md"
+                      style={{ 
+                        backgroundColor: show ? "transparent" : pointData[userId].point ? "#a3e635" : "#e63553",
+                        minWidth: "50px",  // Ensures all boxes are uniform in width
+                        textAlign: "center",
+                        transition: "all 0.3s ease-in-out"
+                      }}
+                    >
+                      <Text size="lg" className="font-bold">
+                        {show ? pointData[userId].point : ''}
+                      </Text>
+                    </Paper>
                   </Paper>
-                </Paper>
-              
+                  <Button loading={isLoading} style={{ height: "auto", flex: 1}} size="md" color="red" onClick={() => removeUser(userId)}>
+                    X
+                  </Button>
+                </Stack>
               ))}
             </Stack>
           </>
         ) : (
           <Stack gap="lg" align="start">
             <TextInput
-              placeholder="Enter Session ID"
+              placeholder="Enter Name"
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               size="md"
